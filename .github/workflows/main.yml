@@ -7,8 +7,40 @@ on:
 
 jobs:
   update_html_and_readme:
-    runs-on: ubuntu-lastest
-    steps: 
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Update index.html for Paul
+        if: ${{ github.actor == 'paulnguyen993' }}
+        shell: bash
+        run: |
+          # Insert a <p> line above </body> if present; otherwise append at end
+          if grep -q '</body>' index.html; then
+            sed -i '/<\/body>/i <p>Updated by ${{ github.actor }} on '"$(date)"'</p>' index.html
+          else
+            echo "<p>Updated by ${{ github.actor }} on $(date)</p>" >> index.html
+          fi
+
+          - name: Update README with log entry
+            shell: bash
+            run: |
+              echo "### Updated by ${{ github.actor }} on $(date '+%Y-%m-%d %H:%M:%S') [Commit: $(git rev-parse --short HEAD)]" >> README.md
+
+      - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Workflow: Updated HTML and README for ${{ github.actor }}" || echo "No changes to commit"
+          # ensure remote uses token (in case of HTTPS origin)
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          git push origin HEAD:main
+
+
+          
